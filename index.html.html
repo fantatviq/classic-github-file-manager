@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classic File Manager</title>
+<style>
+:root{--blue:#3b6ea5;--line:#c7d2df;--bg:#edf2f7;--text:#263746}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font:13px Arial,Helvetica,sans-serif;color:var(--text)}
+.top{background:linear-gradient(#fdfefe,#dce6f0);border-bottom:1px solid #aebdcd;padding:13px 18px;display:flex;align-items:center;gap:12px}
+.logo{width:34px;height:34px;border:1px solid #8ea5bc;border-radius:5px;background:#fff;display:grid;place-items:center;color:#315d87;font-weight:bold;font-size:19px}
+h1{font-size:18px;margin:0;color:#294d70}.sub{color:#687b8d;font-size:11px;margin-top:3px}
+.wrap{max-width:1100px;margin:18px auto;padding:0 14px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:4px;box-shadow:0 1px 2px #0000000c;margin-bottom:14px}
+.panelhead{background:linear-gradient(#f8fafc,#e7edf4);border-bottom:1px solid var(--line);padding:9px 12px;font-weight:bold;color:#385a7b}
+.config{padding:12px;display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:9px;align-items:end}
+label{display:block;font-size:11px;font-weight:bold;color:#506477;margin-bottom:5px}
+input{width:100%;height:32px;border:1px solid #b9c7d5;border-radius:3px;padding:6px 8px;font:13px Arial}
+button{border:1px solid #9aafc3;border-radius:3px;background:linear-gradient(#fff,#e4ebf2);padding:7px 11px;color:#294b6b;cursor:pointer;font-weight:bold;font-size:12px}
+button:hover{background:linear-gradient(#fff,#d7e5f2)}button.primary{background:linear-gradient(#5d8fbe,#376a9d);border-color:#315f8c;color:#fff}
+button.danger{color:#9b3030}button:disabled{opacity:.5;cursor:not-allowed}
+.toolbar{padding:9px 12px;display:flex;gap:7px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #d8e0e8}
+.path{padding:9px 12px;background:#f8fafc;border-bottom:1px solid #e0e6ec;color:#536c83}
+.path span{color:#245d91;cursor:pointer;text-decoration:underline}.path b{color:#253f57}
+.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse}th{text-align:left;background:#f1f5f8;color:#53697d;font-size:11px;padding:9px 10px;border-bottom:1px solid #d6e0e8}td{padding:9px 10px;border-bottom:1px solid #e7edf2}tr:hover td{background:#f7fafc}.name{display:flex;align-items:center;gap:8px}.ico{font-size:17px;width:20px;text-align:center}.foldername{color:#245e93;cursor:pointer;font-weight:bold}.filename{color:#263d52}.actions{display:flex;gap:5px;flex-wrap:wrap}.muted{color:#7b8b99}.status{padding:9px 12px;color:#52697d;background:#fafcfd;border-top:1px solid #e0e6ec;min-height:34px}.notice{padding:11px 12px;line-height:1.5;color:#70551c;background:#fff8e6;border:1px solid #ead8a5;border-radius:3px;margin-bottom:14px}
+.hidden{display:none!important}.uploadbox{padding:12px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}.uploadbox input[type=file]{max-width:360px;height:auto;border:0;padding:0}.small{font-size:11px;color:#708295}.right{margin-left:auto}
+@media(max-width:720px){.config{grid-template-columns:1fr 1fr}.config .wide{grid-column:1/-1}.config button{height:32px}.wrap{margin:10px auto}.top{padding:10px}.actions button{padding:6px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="logo">FM</div><div><h1>File Manager</h1><div class="sub">Classic browser • GitHub Repository Storage</div></div></header>
+<main class="wrap">
+<div class="notice"><b>GitHub Pages limitation:</b> This app stores files in a GitHub repository through the GitHub API. It does not upload files to another website or to GitHub Pages server storage. Use a fine-grained token restricted to one repository with Contents: Read and write. Never share your token.</div>
+<section class="panel">
+<div class="panelhead">Connection Settings</div>
+<div class="config">
+<div><label for="owner">GitHub Username / Owner</label><input id="owner" placeholder="your-username" autocomplete="off"></div>
+<div><label for="repo">Repository</label><input id="repo" placeholder="your-repository" autocomplete="off"></div>
+<div class="wide"><label for="token">Fine-grained Personal Access Token</label><input id="token" type="password" placeholder="github_pat_..." autocomplete="off"></div>
+<button class="primary" id="connect">Connect</button>
+</div>
+<div class="small" style="padding:0 12px 12px">Token stays in this page's memory only and is cleared when you reload or disconnect. Do not use a token on a shared computer.</div>
+</section>
+<section class="panel">
+<div class="toolbar">
+<button id="up" disabled>⬆ Up</button><button id="refresh" disabled>↻ Refresh</button>
+<button id="newfolder" disabled>＋ New Folder</button>
+<button id="disconnect">Disconnect</button>
+<span class="right small" id="repoLabel">Not connected</span>
+</div>
+<div class="path" id="breadcrumb"><b>Repository root</b></div>
+<div class="uploadbox">
+<strong>Upload files:</strong>
+<input id="files" type="file" multiple disabled>
+<button class="primary" id="upload" disabled>Upload Selected</button>
+<span class="small">PDF · ZIP · HTML · other files (repository size limits apply)</span>
+</div>
+<div class="tablewrap">
+<table><thead><tr><th style="width:55%">Name</th><th>Size</th><th>Type</th><th>Actions</th></tr></thead>
+<tbody id="listing"><tr><td colspan="4" class="muted">Connect to a GitHub repository to browse files.</td></tr></tbody></table>
+</div>
+<div class="status" id="status">Ready.</div>
+</section>
+<p class="small">Tip: To publish uploaded files on GitHub Pages, upload them inside the repository's configured Pages publishing folder (often the repository root or <code>docs</code>).</p>
+</main>
+<script>
+(() => {
+ const $ = id => document.getElementById(id);
+ let token = '', owner = '', repo = '', path = '', branch = 'main', connected = false;
+ const api = 'https://api.github.com';
+ const headers = () => ({'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'});
+ const status = (s, bad=false) => { $('status').textContent=s; $('status').style.color=bad?'#a12e2e':'#52697d'; };
+ const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const bytes = n => n<1024?n+' B':n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(2)+' MB';
+ const encPath = p => p.split('/').map(encodeURIComponent).join('/');
+ async function request(url, options={}) {
+   const r = await fetch(url,{...options,headers:{...headers(),...(options.headers||{})}});
+   let data={}; try{data=await r.json()}catch{}
+   if(!r.ok) throw new Error(data.message || `GitHub API error ${r.status}`);
+   return data;
+ }
+ function setEnabled(v){
+   ['up','refresh','newfolder','files','upload'].forEach(id=>$(id).disabled=!v);
+   $('connect').disabled=v;
+ }
+ function renderCrumb(){
+   const parts=path?path.split('/').filter(Boolean):[];
+   let html='<span data-path="">Repository root</span>';
+   let acc='';
+   parts.forEach((p,i)=>{acc+=(acc?'/':'')+p;html+=' / '+(i===parts.length-1?'<b>'+esc(p)+'</b>':'<span data-path="'+esc(acc)+'">'+esc(p)+'</span>')});
+   $('breadcrumb').innerHTML=html;
+   $('breadcrumb').querySelectorAll('[data-path]').forEach(el=>el.addEventListener('click',()=>{path=el.dataset.path;load()}));
+   $('up').disabled=!connected||!path;
+ }
+ async function load(){
+   if(!connected)return;
+   status('Loading repository contents…');
+   renderCrumb();
+   try{
+     const url=`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encPath(path)}?ref=${encodeURIComponent(branch)}`;
+     let data=await request(url);
+     if(!Array.isArray(data)) data=[data];
+     data.sort((a,b)=>(a.type==='dir'?-1:1)-(b.type==='dir'?-1:1)||a.name.localeCompare(b.name));
+     $('listing').innerHTML=data.length?data.map(item=>{
+       const isDir=item.type==='dir', icon=isDir?'📁':(item.name.toLowerCase().endsWith('.pdf')?'📕':item.name.toLowerCase().endsWith('.zip')?'🗜️':item.name.toLowerCase().endsWith('.html')?'🌐':'📄');
+       const safePath=esc(item.path);
+       return `<tr><td><div class="name"><span class="ico">${icon}</span>${isDir?`<span class="foldername" data-open="${safePath}">${esc(item.name)}</span>`:`<span class="filename">${esc(item.name)}</span>`}</div></td><td>${isDir?'—':bytes(item.size||0)}</td><td>${isDir?'Folder':esc(item.name.split('.').pop().toUpperCase())}</td><td><div class="actions">${!isDir?`<button data-copy="${safePath}">Copy URL</button><button data-download="${safePath}">Download</button>`:''}<button class="danger" data-delete="${safePath}" data-sha="${esc(item.sha)}">Delete</button></div></td></tr>`;
+     }).join(''):'<tr><td colspan="4" class="muted">This folder is empty.</td></tr>';
+     $('listing').querySelectorAll('[data-open]').forEach(el=>el.onclick=()=>{path=el.dataset.open;load()});
+     $('listing').querySelectorAll('[data-copy]').forEach(el=>el.onclick=()=>copyUrl(el.dataset.copy));
+     $('listing').querySelectorAll('[data-download]').forEach(el=>el.onclick=()=>downloadFile(el.dataset.download));
+     $('listing').querySelectorAll('[data-delete]').forEach(el=>el.onclick=()=>deleteFile(el.dataset.delete,el.dataset.sha));
+     status(`${data.length} item(s) • ${owner}/${repo}/${path}`);
+   }catch(e){$('listing').innerHTML=`<tr><td colspan="4" class="muted">${esc(e.message)}</td></tr>`;status(e.message,true)}
+ }
+ function rawUrl(p){return `https://raw.githubusercontent.com/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(branch)}/${p.split('/').map(encodeURIComponent).join('/')}`}
+ async function copyUrl(p){
+   const url=rawUrl(p);
+   try{await navigator.clipboard.writeText(url);status('Direct raw URL copied: '+url)}
+   catch{prompt('Copy this URL:',url)}
+ }
+ async function downloadFile(p){
+   try{status('Preparing download…');const d=await request(`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encPath(p)}?ref=${encodeURIComponent(branch)}`);
+     if(!d.download_url)throw new Error('Download URL unavailable');
+     window.open(d.download_url,'_blank','noopener');status('Download opened in a new tab.');
+   }catch(e){status(e.message,true)}
+ }
+ async function deleteFile(p,sha){
+   if(!confirm(`Delete "${p}" from the repository? This creates a commit.`))return;
+   try{status('Deleting…');await request(`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encPath(p)}`,{method:'DELETE',body:JSON.stringify({message:'Delete '+p,sha,branch})});status('File deleted.');load()}
+   catch(e){status(e.message,true)}
+ }
+ $('connect').onclick=async()=>{
+   owner=$('owner').value.trim();repo=$('repo').value.trim();token=$('token').value.trim();
+   if(!owner||!repo||!token){status('Enter owner, repository and token.',true);return}
+   status('Checking GitHub access…');
+   try{
+     const info=await request(`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`);
+     branch=info.default_branch||'main';connected=true;path='';
+     setEnabled(true);$('repoLabel').textContent=owner+'/'+repo+' • '+branch;
+     status('Connected successfully.');load();
+   }catch(e){token='';$('token').value='';status(e.message+' Check token permissions and repository name.',true)}
+ };
+ $('disconnect').onclick=()=>{token='';$('token').value='';connected=false;path='';setEnabled(false);$('repoLabel').textContent='Not connected';$('listing').innerHTML='<tr><td colspan="4" class="muted">Connect to a GitHub repository to browse files.</td></tr>';renderCrumb();status('Disconnected. Token cleared from memory.')};
+ $('refresh').onclick=load;
+ $('up').onclick=()=>{path=path.split('/').slice(0,-1).join('/');load()};
+ $('newfolder').onclick=async()=>{
+   const name=prompt('New folder name (letters, numbers, dash or underscore):');
+   if(!name)return;
+   if(!/^[a-zA-Z0-9._-]+$/.test(name)){status('Use letters, numbers, dot, dash or underscore.',true);return}
+   const p=(path?path+'/':'')+name+'/.gitkeep';
+   try{status('Creating folder…');await request(`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encPath(p)}`,{method:'PUT',body:JSON.stringify({message:'Create folder '+name,content:btoa(''),branch})});status('Folder created.');load()}
+   catch(e){status(e.message,true)}
+ };
+ $('upload').onclick=async()=>{
+   const files=[...$('files').files];if(!files.length){status('Choose one or more files first.',true);return}
+   for(let i=0;i<files.length;i++){
+     const f=files[i], p=(path?path+'/':'')+f.name;
+     try{
+       status(`Uploading ${i+1}/${files.length}: ${f.name}`);
+       const b64=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(f)});
+       await request(`${api}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encPath(p)}`,{method:'PUT',body:JSON.stringify({message:'Upload '+f.name,content:b64,branch})});
+     }catch(e){status(`Stopped at ${f.name}: ${e.message}`,true);return}
+   }
+   $('files').value='';status(`${files.length} file(s) uploaded successfully.`);load();
+ };
+ setEnabled(false);renderCrumb();
+})();
+</script>
+</body>
+</html>
